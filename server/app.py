@@ -30,17 +30,103 @@ def bakeries():
     )
     return response
 
-@app.route('/bakeries/<int:id>')
+@app.route('/bakeries/<int:id>', methods = ['GET', 'PATCH'])
 def bakery_by_id(id):
 
     bakery = Bakery.query.filter_by(id=id).first()
-    bakery_serialized = bakery.to_dict()
 
-    response = make_response(
-        bakery_serialized,
-        200
-    )
-    return response
+    if request.method == 'GET':
+        bakery_serialized = bakery.to_dict()
+
+        response = make_response(bakery_serialized,200)
+        return response
+
+    elif request.method == 'PATCH':
+    
+        for attr in request.form:
+            setattr(bakery, attr, request.form.get(attr))
+        
+        db.session.add(bakery)
+        db.session.commit()
+
+        bakery_serialized = bakery.to_dict()
+
+        response = make_response(bakery_serialized, 200)
+
+        return response
+
+
+@app.route('/baked_goods', methods = ['GET', 'POST'])
+def baked_goods():
+
+    if request.method == 'GET':
+        baked_goods = [ ]
+        for bg in BakedGood.query.all():
+            bg_dict = bg.to_dict()
+            baked_goods.append(bg_dict)
+        response = make_response(
+            baked_goods, 
+            200
+        )
+        return response
+    
+    elif request.method == 'POST':
+        new_good = BakedGood(
+            name = request.form.get("name"),
+            price = request.form.get("price"),
+            bakery_id = request.form.get("bakery_id"),
+        )
+
+        db.session.add(new_good)
+        db.session.commit()
+
+        new_good_dict = new_good.to_dict()
+
+        response = make_response(
+            new_good_dict, 
+            201
+        )
+        return response
+
+
+@app.route('/baked_goods/<int:id>', methods = ['GET', 'PATCH', 'DELETE'])
+def baked_goods_by_id(id):
+
+    baked_good = BakedGood.query.filter(BakedGood.id == id).first()
+
+    if baked_good == None:
+        response_body = {
+            "message" : "This recorrd does not exist in ourr database. Please try again."
+        }
+        response = make_response(response_body, 404)
+        return response
+    
+    else:
+        if request.method == 'GET':
+            baked_good_serialized = baked_good.to_dict()
+
+            response = make_response(baked_good_serialized, 200)
+
+            return response
+        
+            
+        elif request.method == 'DELETE':
+            db.session.delete(baked_good)
+            db.session.commit()
+
+            response_body = {
+                "delete_successful" : True, 
+                "message": "Baked good deleted"
+            }
+
+            response = make_response(response_body, 200)
+            return response
+
+
+
+
+
+
 
 @app.route('/baked_goods/by_price')
 def baked_goods_by_price():
